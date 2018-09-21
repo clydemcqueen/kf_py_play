@@ -4,13 +4,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 from numpy.random import randn
 from filterpy.common import Q_discrete_white_noise
-from simple_kf import predict, update
+import simple_kf
 
 
 # Track a vehicle in 1D, with 2 variables:
 # -- position (measured)
 # -- velocity (hidden)
 # Results: finds track
+kf = simple_kf.KalmanFilter(state_dim=2, measurement_dim=1)
 
 
 def simulate_vehicle(z_var, process_var, count, dt):
@@ -47,30 +48,30 @@ def simulate_vehicle(z_var, process_var, count, dt):
 dt = 1.
 
 # State mean, written formally as a 2x1 matrix, initialized with pretty wild data
-x = np.array([[10.0], [4.5]])
-print 'x\n', x
+kf.x = np.array([[10.0], [4.5]])
+print 'x\n', kf.x
 
 # State covariance
-P = np.diag([500., 49.])
-print 'P\n', P
+kf.P = np.diag([500., 49.])
+print 'P\n', kf.P
 
 # Transition matrix
-F = np.array([[1, dt], [0, 1]])
-print 'F\n', F
+kf.F = np.array([[1, dt], [0, 1]])
+print 'F\n', kf.F
 
 # Process noise
 Q_var = 0.01
-Q = Q_discrete_white_noise(dim=2, dt=dt, var=Q_var)
-print 'Q\n', Q
+kf.Q = Q_discrete_white_noise(dim=2, dt=dt, var=Q_var)
+print 'Q\n', kf.Q
 
 # Measurement matrix, translates state into measurement space
-H = np.array([[1., 0.]])
-print 'H\n', H
+kf.H = np.array([[1., 0.]])
+print 'H\n', kf.H
 
 # Measurement noise
 R_var = 5.
-R = np.array([[R_var]])
-print 'R\n', R
+kf.R = np.array([[R_var]])
+print 'R\n', kf.R
 
 ts, xs_track, zs, vs_track = simulate_vehicle(R_var, Q_var, 20, dt)
 
@@ -79,10 +80,10 @@ prior_velocities, posterior_velocities = [], []
 pc00, pc11 = [], []
 
 for z in zs:
-    x, P = predict(x, P, F, Q)
+    x, P = kf.predict()
     prior_positions.append(x[0])
     prior_velocities.append(x[1])
-    x, P = update(x, P, z, R, H)
+    x, P = kf.update(np.array([[z]]))
     posterior_positions.append(x[0])
     posterior_velocities.append(x[1])
     pc00.append(P[0, 0])
@@ -112,4 +113,3 @@ plt.grid()
 plt.legend()
 
 plt.show()
-

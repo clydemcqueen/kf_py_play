@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from numpy.random import randn
 from filterpy.common import Q_discrete_white_noise
-from simple_kf import predict, update
+import simple_kf
 
 
 # Track a vehicle in 1D, with 3 variables:
@@ -12,6 +12,7 @@ from simple_kf import predict, update
 # -- velocity (hidden)
 # -- acceleration (measured)
 # Results: doesn't find track, position variance doesn't converge
+kf = simple_kf.KalmanFilter(state_dim=3, measurement_dim=1)
 
 
 def simulate_vehicle(z_var, process_var, count, dt):
@@ -54,30 +55,30 @@ def simulate_vehicle(z_var, process_var, count, dt):
 dt = 1.
 
 # State mean, written formally as a 2x1 matrix
-x = np.array([[10.0], [5.0], [0.1]])
-print 'x\n', x
+kf.x = np.array([[10.0], [5.0], [0.1]])
+print 'x\n', kf.x
 
 # State covariance
-P = np.diag([1., 1., 1.])
-print 'P\n', P
+kf.P = np.diag([1., 1., 1.])
+print 'P\n', kf.P
 
 # Transition matrix
-F = np.array([[1, dt, dt * dt / 2], [0, 1, dt], [0, 0, 1]])
-print 'F\n', F
+kf.F = np.array([[1, dt, dt * dt / 2], [0, 1, dt], [0, 0, 1]])
+print 'F\n', kf.F
 
 # Process noise
 Q_var = 0.0001
-Q = Q_discrete_white_noise(dim=3, dt=dt, var=Q_var)
-print 'Q\n', Q
+kf.Q = Q_discrete_white_noise(dim=3, dt=dt, var=Q_var)
+print 'Q\n', kf.Q
 
 # Measurement matrix, translates state into measurement space
-H = np.array([[0., 0., 1.]])
-print 'H\n', H
+kf.H = np.array([[0., 0., 1.]])
+print 'H\n', kf.H
 
 # Measurement noise
 R_var = 0.003 * 0.003
-R = np.array([[R_var]])
-print 'R\n', R
+kf.R = np.array([[R_var]])
+print 'R\n', kf.R
 
 ts, xs_track, vs_track, as_track, zs = simulate_vehicle(R_var, Q_var, 50, dt)
 
@@ -87,11 +88,11 @@ prior_accelerations, posterior_accelerations = [], []
 pc00, pc11, pc22 = [], [], []
 
 for z in zs:
-    x, P = predict(x, P, F, Q)
+    x, P = kf.predict()
     prior_positions.append(x[0])
     prior_velocities.append(x[1])
     prior_accelerations.append(x[2])
-    x, P = update(x, P, z, R, H)
+    x, P = kf.update(np.array([[z]]))
     posterior_positions.append(x[0])
     posterior_velocities.append(x[1])
     posterior_accelerations.append(x[2])
@@ -99,7 +100,7 @@ for z in zs:
     pc11.append(P[1, 1])
     pc22.append(P[2, 2])
 
-print 'Final P\n', P
+print 'Final P\n', kf.P
 
 plt.figure(1)
 
@@ -137,4 +138,3 @@ plt.grid()
 plt.legend()
 
 plt.show()
-
